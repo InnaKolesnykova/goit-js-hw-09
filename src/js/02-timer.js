@@ -1,17 +1,14 @@
-import flatpickr from "flatpickr";
-import "flatpickr/dist/flatpickr.min.css";
+import flatpickr from 'flatpickr';
+import 'flatpickr/dist/flatpickr.min.css';
+import { Notify } from 'notiflix/build/notiflix-notify-aio';
 
-const dateInput = document.querySelector("input");
-const btnStart = document.querySelector("button");
-
-const daysOutput = document.querySelector(".value[data-days]");
-const hoursOutput = document.querySelector(".value[data-hours]");
-const minsOutput = document.querySelector(".value[data-minutes]");
-const secsOutput = document.querySelector(".value[data-seconds]");
-
+const buttonStart = document.querySelector('button[data-start]');
+buttonStart.disabled = true;
+const daysTimer = document.querySelector('span[data-days]');
+const hoursTimer = document.querySelector('span[data-hours]');
+const minutesTimer = document.querySelector('span[data-minutes]');
+const secondsTimer = document.querySelector('span[data-seconds]');
 let timerId = null;
-
-btnStart.disabled = true;
 
 const options = {
   enableTime: true,
@@ -20,61 +17,51 @@ const options = {
   minuteIncrement: 1,
   onClose(selectedDates) {
     console.log(selectedDates[0]);
-    if (!selectedDates[0] || selectedDates[0] < new Date()) {
-      btnStart.disabled = true;
-      alert("Please choose a date in the future");
+    if (new Date().getTime() > selectedDates[0].getTime()) {
+      Notify.failure('Please choose a date in the future');
     } else {
-      btnStart.disabled = false;
+      buttonStart.disabled = false;
+      buttonStart.addEventListener('click', () => {
+        timerId = setInterval(() => {
+          buttonStart.disabled = true;
+          const difference = selectedDates[0].getTime() - new Date().getTime();
+          if (difference < 1000) {
+            clearInterval(timerId);
+            secondsTimer.textContent = '00';
+          } else {
+            function convertMs(ms) {
+              const second = 1000;
+              const minute = second * 60;
+              const hour = minute * 60;
+              const day = hour * 24;
+
+              const days = Math.floor(ms / day);
+              const hours = Math.floor((ms % day) / hour);
+              const minutes = Math.floor(((ms % day) % hour) / minute);
+              const seconds = Math.floor(
+                (((ms % day) % hour) % minute) / second
+              );
+
+              return { days, hours, minutes, seconds };
+            }
+            daysTimer.textContent = addLeadingZero(convertMs(difference).days);
+            hoursTimer.textContent = addLeadingZero(
+              convertMs(difference).hours
+            );
+            minutesTimer.textContent = addLeadingZero(
+              convertMs(difference).minutes
+            );
+            secondsTimer.textContent = addLeadingZero(
+              convertMs(difference).seconds
+            );
+            function addLeadingZero(value) {
+              return String(value).padStart(2, '0');
+            }
+          }
+        }, 1000);
+      });
     }
   },
 };
 
-flatpickr(dateInput, options);
-
-const onClick = () => {  
-  const targetDate = new Date(dateInput.value);
-  const currentDate = new Date();
-
-  let timeRemaining = targetDate.getTime() - currentDate.getTime();
-
-  if (timeRemaining <= 0) {
-    alert("Selected date has already passed.");
-    return;
-  } else {
-    btnStart.disabled = true;
-  }
-
-  updateTimerDisplay(timeRemaining);
-
-  timerId = setInterval(() => {
-    timeRemaining -= 1000;
-    updateTimerDisplay(timeRemaining);
-  }, 1000);
-};
-
-const updateTimerDisplay = (timeRemaining) => {
-  if (timeRemaining < 0) {
-    clearInterval(timerId);
-    alert("Countdown completed!");
-
-    daysOutput.textContent = 0;
-    hoursOutput.textContent = 0;
-    minsOutput.textContent = 0;
-    secsOutput.textContent = 0;
-
-    btnStart.disabled = false;
-    return;
-  }
-
-  const days = Math.floor(timeRemaining / (1000 * 60 * 60 * 24));
-  const hours = Math.floor((timeRemaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-  const minutes = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
-  const seconds = Math.floor((timeRemaining % (1000 * 60)) / 1000);
-
-  daysOutput.textContent = days;
-  hoursOutput.textContent = hours;
-  minsOutput.textContent = minutes;
-  secsOutput.textContent = seconds;
-};
-
-btnStart.addEventListener('click', onClick);
+flatpickr('input#datetime-picker', options);
